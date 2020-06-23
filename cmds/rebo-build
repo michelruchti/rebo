@@ -1,0 +1,14 @@
+#!/bin/bash
+
+cd ~/.rebo/
+packer build -var-file ~/.rebo/config.json ~/.rebo/packer.json
+if [ "$?" == "0" ]
+then
+    echo "Your build completed successfully!"
+    echo "To initialize an instance, run rebo-init"
+	~/.rebo/cmds/rebo-prune
+    notify-send "Rebo Info" "Build completed successfully!"
+else
+    echo "Your build failed :( Please take a look at the errors!"
+    notify-send "Rebo Info" "Build failed :("
+fi

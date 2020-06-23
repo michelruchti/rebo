@@ -1,0 +1,144 @@
+{
+  "variables": {
+    "go_version": "go1.14.3.linux-amd64.tar.gz",
+    "region": "",
+    "do_key": ""
+  },
+  "builders": [
+    {
+      "type": "digitalocean",
+      "ssh_username": "root",
+      "snapshot_name": "rebo-{{timestamp}}",
+      "api_token": "{{ user `do_key` }}",
+      "image": "ubuntu-19-10-x64",
+      "region": "{{ user `region`  }}",
+      "size": "s-1vcpu-1gb"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "./configs/sshd_config",
+      "destination": "/etc/ssh/sshd_config"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Updating an installing dependencies'",
+        "touch ~/.provisioned",
+        "apt-get update",
+        "apt-get upgrade -y",
+        "apt-get dist-upgrade -y",
+        "apt-get -y install libssl-dev build-essential python3-pip python-setuptools jq git httpie nmap awscli curl figlet sqlmap dirb unzip chromium-browser",
+        "ufw default deny incoming",
+        "sudo ufw default allow outgoing",
+        "sudo ufw allow 22",
+        "sudo ufw allow 80",
+        "sudo ufw allow 443",
+        "sudo ufw allow 53/udp",
+        "sudo ufw allow 53/tcp",
+        "ufw --force enable",
+        "useradd -G sudo -s /usr/bin/bash -m michel",
+        "mkdir -p /home/michel/.ssh /home/michel/lists /home/michel/tools /home/michel/.config/",
+        "chown -R michel:users /home/michel",
+        "echo 'michel:{{ user `do_key` }}' | chpasswd",
+        "rm /etc/resolv.conf",
+        "rm -rf /etc/update-motd.d/*"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "./configs/resolv.conf",
+      "destination": "/etc/resolv.conf"
+    },
+    {
+      "type": "file",
+      "source": "./configs/sudoers",
+      "destination": "/etc/sudoers"
+    },
+    {
+      "type": "file",
+      "source": "./configs/authorized_keys",
+      "destination": "/home/michel/.ssh/authorized_keys"
+    },
+    {
+      "type": "file",
+      "source": "./configs/00-header",
+      "destination": "/etc/update-motd.d/00-header"
+    },
+    {
+      "type": "file",
+      "source": "./configs/bashrc",
+      "destination": "/home/michel/.bashrc"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "chattr +i /etc/resolv.conf",
+        "chown -R michel:users /home/michel",
+        "cd /tmp",
+        "sudo wget https://raw.githubusercontent.com/xero/figlet-fonts/master/Bloody.flf -O /usr/share/figlet/Bloody.flf",
+        "echo 'Installing GO'",
+        "wget -O /tmp/go.tar.gz https://dl.google.com/go/{{ user `go_version`  }} && tar -xvf go.tar.gz && sudo mv go /usr/local",
+        "export GOROOT=/usr/local/go && export GOPATH=/home/michel/go && export PATH=$GOPATH/bin:$GOROOT/bin:$PATH",
+        "echo 'Installing Amass'",
+        "export GO111MODULE=on && go get -v github.com/OWASP/Amass/v3/...",
+        "echo 'Installing SecLists'",
+        "git clone https://github.com/danielmiessler/SecLists.git /home/michel/lists/seclists",
+        "cd /home/michel/lists/SecLists/Discovery/DNS/ && cat dns-Jhaddix.txt | head -n -14 > clean-jhaddix-dns.txt",
+        "wget -O /home/michel/lists/jhaddix-all.txt https://gist.githubusercontent.com/jhaddix/86a06c5dc309d08580a018c66354a056/raw/96f4e51d96b2203f19f6381c8c545b278eaa0837/all.txt",
+        "echo 'Installing Httprobe'",
+        "go get -u github.com/tomnomnom/httprobe",
+        "echo 'Installing Meg'",
+        "go get -u github.com/tomnomnom/meg",
+        "echo 'Installing ffuf'",
+        "go get -u github.com/ffuf/ffuf",
+        "echo 'Installing assetfinder'",
+        "go get -u github.com/tomnomnom/assetfinder",
+        "echo 'Installing waybackurls'",
+        "go get -u github.com/tomnomnom/waybackurls",
+        "echo 'Installing gron'",
+        "go get -u github.com/tomnomnom/gron",
+        "echo 'Installing anti-burl'",
+        "go get -u github.com/tomnomnom/hacks/anti-burl",
+        "echo 'Installing kxss'",
+        "go get -u github.com/tomnomnom/hacks/kxss",
+        "echo 'Installing gf'",
+        "go get -u github.com/tomnomnom/gf",
+        "echo 'Installing hakrawler'",
+        "go get -u github.com/hakluke/hakrawler",
+        "echo 'Installing getJS'",
+        "go get -u github.com/003random/getJS",
+        "echo 'Installing concurl'",
+        "go get -u github.com/tomnomnom/hacks/concurl",
+        "echo 'Installing gau'",
+        "GO111MODULE=on && go get -u github.com/lc/gau",
+        "echo 'Installing unfurl'",
+        "go get -u github.com/tomnomnom/unfurl",
+        "echo 'Installing subgen0'",
+        "go get -u github.com/pry0cc/subgen",
+        "echo 'Installing fprobe'",
+        "GO111MODULE=on && go get -u github.com/theblackturtle/fprobe",
+        "echo 'Installing httpx'",
+        "GO111MODULE=on go get -u -v github.com/projectdiscovery/httpx/cmd/httpx",
+        "echo 'Installing wordlistgen'",
+        "go get -u github.com/ameenmaali/wordlistgen",
+        "echo 'Installing SubOver'",
+        "go get github.com/Ice3man543/SubOver",
+        "echo 'Installing Subfinder'",
+        "GO111MODULE=on go get -v github.com/projectdiscovery/subfinder/cmd/subfinder",
+        "echo 'Installing 'DNSObserver'",
+        "go get github.com/allyomalley/dnsobserver/...",
+        "echo 'Installing Aquatone'",
+        "wget -O /tmp/aquatone.zip https://github.com/michenriksen/aquatone/releases/download/v1.7.0/aquatone_linux_amd64_1.7.0.zip && unzip /tmp/aquatone.zip && mv /tmp/aquatone /home/michel/go/bin/aquatone",
+        "echo 'Installing Node Version Manager'",
+        "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash",
+        "chown -R michel:users /home/michel",
+        "sudo chmod +x /etc/update-motd.d/00-header"
+      ]
+    }
+  ],
+  "post-processors": [
+    "vagrant"
+  ]
+}

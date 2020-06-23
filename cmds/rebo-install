@@ -1,0 +1,135 @@
+#!/bin/bash
+
+# Reset
+Color_Off='\033[0m'       # Text Reset
+
+# Regular Colors
+Black='\033[0;30m'        # Black
+Red='\033[0;31m'          # Red
+Green='\033[0;32m'        # Green
+Yellow='\033[0;33m'       # Yellow
+Blue='\033[0;34m'         # Blue
+Purple='\033[0;35m'       # Purple
+Cyan='\033[0;36m'         # Cyan
+White='\033[0;37m'        # White
+
+# Bold
+BBlack='\033[1;30m'       # Black
+BRed='\033[1;31m'         # Red
+BGreen='\033[1;32m'       # Green
+BYellow='\033[1;33m'      # Yellow
+BBlue='\033[1;34m'        # Blue
+BPurple='\033[1;35m'      # Purple
+BCyan='\033[1;36m'        # Cyan
+BWhite='\033[1;37m'       # White
+
+echo -e "${Blue}Hello! Welcome to Rebo configuration"
+echo -e "To begin, I will ask you a few questions"
+echo -e "Press enter to continue${Color_Off}"
+read
+
+echo -e "${BWhite}Installing deps! Please wait ${Color_Off}"
+BASEOS="`uname`"
+case $BASEOS in
+  'Linux')
+    BASEOS='Linux'
+    ;;
+  'FreeBSD')
+    BASEOS='FreeBSD'
+    alias ls='ls -G'
+    ;;
+  'WindowsNT')
+    BASEOS='Windows'
+    ;;
+  'Darwin') 
+    BASEOS='Mac'
+    ;;
+  'SunOS')
+    BASEOS='Solaris'
+    ;;
+  'AIX') ;;
+  *) ;;
+esac
+
+if [ $BASEOS == "Linux" ]
+then
+    OS=$(lsb_release -i | awk '{ print $3 }')
+    if [ $OS == "Arch" ]
+    then
+        echo -e "${Blue}You run arch..."
+        echo -e "Ok so you need doctl - so get that from the AUR. yay -S doctl! ${Color_Off}"
+        sudo pacman -S fzf packer jq
+    elif [ $OS == "Ubuntu" ] || [ $OS == "Debian" ]
+    then
+        sudo apt-get update && sudo apt-get -y install git unzip
+        sudo wget -O /usr/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && sudo chmod +x /usr/bin/jq
+        wget -O /tmp/packer.zip https://releases.hashicorp.com/packer/1.5.6/packer_1.5.6_linux_amd64.zip && unzip /tmp/packer.zip && sudo mv /tmp/packer /usr/bin/
+        wget -O /tmp/doctl.tar.gz https://github.com/digitalocean/doctl/releases/download/v1.45.0/doctl-1.45.0-linux-amd64.tar.gz && tar xf /tmp/doctl.tar.gz && sudo mv /tmp/doctl /usr/bin/
+    fi
+fi
+
+if [ ! -d ~/.rebo ]
+then
+#     git clone https://github.com/pry0cc/axiom ~/.rebo
+    cp -r . ~/.rebo
+else
+   # cd ~/.rebo && git pull
+   rm -rf ~/.rebo && cp -r . ~/.rebo
+fi
+
+echo -e "${BBlue}What is your DigitalOcean API key? ${Color_Off}"
+echo -e -n "${Blue}Key >> ${Color_Off}"
+read do_key
+#do_key="9f...."
+echo -e "${Blue}Setting up doctl!...${Color_Off}"
+doctl auth init -t $do_key
+echo "What would you like to pick for region? Examples: fra1, nyc3, sfo2 "
+# region="fra1"
+echo -n "Region >> "
+read region
+#echo "What domain do you use?"
+#echo -n "Domain >> "
+#read domain
+domain=""
+#echo "What is your Hunter key? (optional)"
+#echo -n "Key >> "
+hunter_key=""
+size="s-1vcpu-1gb"
+
+if [ -f ~/.ssh/id_rsa.pub ]
+then
+    echo -e "${Blue}Detected SSH public key, would you like to install this for your rebo setup? y/n ${Color_Off}"
+    read ans
+    if [ $ans == "y" ]
+    then
+        cat ~/.ssh/id_rsa.pub > ~/.rebo/configs/authorized_keys
+    fi
+else
+    echo -e "${Blue}No SSH public key detected, would you like to generate a fresh pair? y/n ${Color_Off}"
+    read ans
+    if [ $ans == "y" ]
+    then
+        ssh-keygen
+        cat ~/.ssh/id_rsa.pub > ~/.rebo/configs/authorized_keys
+    fi
+fi
+
+if [ "$SHELL" == "/bin/bash" ]; then
+    echo -e "${Green}You're running Bash! Installing Rebo to \$PATH...${Color_Off}"
+    echo "export PATH=\"\$PATH:\$HOME/.rebo/cmds\"" >> ~/.bashrc
+else
+    echo -e "${Red}I don't have a predefined setup for your shell!"
+    echo "Please add ~/.rebo/cmds to your \$PATH! ${Color_Off}"
+    echo "(export PATH=\"\$PATH:$HOME/.rebo/cmds\")"
+fi 
+
+
+export PATH="$PATH:$HOME/.rebo/cmds"
+
+echo "{\"do_key\":\"$do_key\", \"region\":\"$region\", \"domain\":\"$domain\", \"default_size\":\"$size\", \"hunter_key\":\"$hunter_key\"}" | jq > ~/.rebo/config.json
+
+echo -e "${BWhite}Beginning first packer build...${Color_Off}"
+cd ~/.rebo
+packer build -var-file ~/.rebo/config.json ~/.rebo/packer.json
+cd
+

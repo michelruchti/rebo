@@ -1,0 +1,123 @@
+#!/bin/bash
+
+names=("allen" "archimedes" "stok" "pry" "chell" "fire" "bango" "cage" "xpn" "luke" "haddix" "omnom" "jobs" "ritchie" "knox" "bleeder" "batman" "blink" "ghost" "metcalf" "hickey" "fightnerd" "pancakes" "kennedy" "jarvis" "unicorn" "medin" "mog" "thl" "cuthbert" "fox" "hunt" "austin" "babbage" "banach" "banzai" "bardeen" "bartik" "bassi" "beaver" "bell" "benz" "black" "blackburn" "blackwell" "bohr" "booth" "borg" "bose" "bouman" "boyd" "brown" "buck" "burnell" "cannon" "carson" "cartwright" "cerf" "chatelet" "cohen" "chaum" "clarke" "colden" "cori" "cray" "curie" "darwin" "davinci" "diffie" "dirac" "dubinsky" "easley" "edison" "einstein" "elbakyan" "elion" "ellis" "engelbart" "euclid" "euler" "faraday" "fermat" "fermi" "franklin" "gagarin" "galileo" "gates" "gauss" "goldberg" "goldstine" "goodall" "gould" "greider" "haibt" "hamilton" "haslett" "hawking" "hellman" "heisenberg" "hermann" "herschel" "hertz" "hodgkin" "hoover" "hopper" "hugle" "hypatia" "jackson" "jang" "jennings" "jepsen" "johnson" "joliot" "jones" "kalam" "kare" "keller" "kepler" "kilby" "kirch" "knuth" "lalande" "lamar" "lamport" "leakey" "lederberg" "lehmann" "lewin" "liskov" "lovelace" "margulis" "matsumoto" "maxwell" "mayer" "mccarthy" "mclaren" "mclean" "mcnulty" "mendel" "merkle" "moore" "morse" "murdock" "moser" "napier" "nash" "neumann" "newton" "nightingale" "nobel" "noyce" "panini" "pare" "pascal" "payne" "perlman" "pike" "ptolemy" "raman" "ride" "ritchie" "rhodes" "robinson""rosalind" "rubin" "saha" "sammet" "sanderson" "satoshi" "shamir" "shannon" "shaw" "shirley""snyder" "solomon" "spence" "stonebraker" "sutherland" "swanson" "swartz" "swirles" "tesla""thompson" "torvalds" "tu" "turing" "volhard" "villani" "wescoff" "wilbur" "wiles" "williams""wilson" "wing" "wozniak" "wright" "wu")
+
+# Reset
+Color_Off='\033[0m'       # Text Reset
+
+# Regular Colors
+export Black='\033[0;30m'        # Black
+export Red='\033[0;31m'          # Red
+export Green='\033[0;32m'        # Green
+export Yellow='\033[0;33m'       # Yellow
+export Blue='\033[0;34m'         # Blue
+export Purple='\033[0;35m'       # Purple
+export Cyan='\033[0;36m'         # Cyan
+export White='\033[0;37m'        # White
+
+# Bold
+export BBlack='\033[1;30m'       # Black
+export BRed='\033[1;31m'         # Red
+export BGreen='\033[1;32m'       # Green
+export BYellow='\033[1;33m'      # Yellow
+export BBlue='\033[1;34m'        # Blue
+export BPurple='\033[1;35m'      # Purple
+export BCyan='\033[1;36m'        # Cyan
+export BWhite='\033[1;37m'       # White
+
+gen_name="${names[$RANDOM % ${#names[@]} ]}-$((10 + RANDOM % 20))"
+region="$(jq -r '.region' ~/.rebo/config.json)"
+size="$(jq -r '.default_size' ~/.rebo/config.json)"
+#domain=$(cat ~/.rebo.json | jq -r '.domain')
+
+box_name=""
+connect_shell=false
+restore=false
+deploy=false
+
+if [ -z "$1" ] || [[ $1 =~ "shell" ]] || [[ $1 =~ "restore" ]] || [[ $1 =~ "deploy" ]];
+then
+    name="$gen_name"
+else
+    name="$1"
+fi
+
+for var in "$@"
+do
+    if [ "$var" == "--shell" ]
+    then
+        connect_shell=true
+    fi
+    if [[ $var =~ "--restore" ]]
+    then
+        restore="$(echo "$var" | sed 's/=/ /g' | awk '{ print $2 }')"
+        echo -e "${BWhite}Using restore backup '$restore'${Color_Off}"
+    fi
+    if [[ "$var" =~ "--deploy" ]]
+    then
+        deploy="$(echo "$var" | sed 's/=/ /g' | awk '{ print $2 }')"
+        echo -e "${BWhite}Deploying '$deploy' after init${Color_Off}"
+    fi
+done
+
+notify-send "Rebo Info" "Initializing '$name'..."
+echo -e "${BWhite}Initializing '$name'"
+
+image_name="rebo"
+image_id="$(doctl compute image list | grep "$image_name" | tail -n 1 | awk '{ print $1 }')"
+
+resp=$(doctl compute droplet create "$name" --image "$image_id" --size "$size" --region "$region")
+
+secs=$((60))
+while [ $secs -gt 30 ]; do
+   echo -ne ">> T-Minus $secs to stage-1 Lift Off!\033[0K\r"
+   sleep 1
+   : $((secs--))
+done
+
+# Roughly 30 seconds before the public IP is init'd
+ip="$(doctl compute droplet list | grep "$name" | awk '{ print $3 }')"
+#dns=$(doctl compute domain records create $domain --record-type A --record-name $name --record-data $ip)
+
+if [ "$connect_shell" == true ]
+then
+
+	secs=$((80))
+	while [ $secs -gt 0 ]; do
+		echo -ne ">> T-Minus $secs to connect...\033[0K\r"
+		sleep 1
+		: $((secs--))
+	done
+
+	echo "{\"instance\":\"$name\"}" | jq > ~/.rebo/profile.json
+	notify-send "Rebo Info" "$name successfully initialized at $ip!"
+    echo -e "${BBlue}Connecting...                          ${Color_Off}"
+    ip="$(doctl compute droplet list | grep "$name" | awk '{ print $3 }')"
+    ssh -p2266 op@"$ip"
+else
+	secs=$((30))
+	while [ $secs -gt 0 ]; do
+		echo -ne ">> T-Minus $secs to full initialization...\033[0K\r"
+		sleep 1
+		: $((secs--))
+	done
+
+	echo "{\"instance\":\"$name\"}" | jq > ~/.rebo/profile.json
+	notify-send "Rebo Info" "$name successfully initialized at $ip!"
+    echo -e "${BWhite}Initialized! Instance accessible at '${BGreen}$ip${BWhite}'!"
+    echo -e "To connect, run '${BGreen}rebo-ssh $name${Green}'${Color_Off}"
+fi
+
+if [ "$restore" != false ]
+then
+	echo -e "${BWhite}Waiting 30 seconds before restore...${Color_Off}"
+	sleep 42
+    ~/.rebo/cmds/rebo-restore "$restore"
+fi
+
+if [ "$deploy" != false ]
+then
+	echo -e "${BWhite}Waiting 30 seconds before deploy... ${Color_Off}"
+	sleep 42
+	~/.rebo/cmds/rebo-deploy "$deploy"
+fi

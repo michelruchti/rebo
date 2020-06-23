@@ -1,0 +1,18 @@
+export HOME=/home/michel
+export GOROOT=/usr/local/go
+export GOPATH=/home/michel/go
+export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+alias webserver='python3 -m http.server 443'
+## Colorize the ls output ##
+alias ls='ls --color=auto'
+## Use a long listing format ##
+alias ll='ls -la'
+## Show hidden files ##
+alias l.='ls -d .* --color=auto'
+# alias for wordlists
+export BIG="/home/michel/lists/seclists/Discovery/Web-Content/big.txt"
+export WEB="/home/michel/lists/seclists/Discovery/Web-Content/"
+export DIRS_LARGE="/home/michel/lists/seclists/Discovery/Web-Content/raft-large-directories.txt"
+export DIRS_SMALL="/home/michel/lists/seclists/Discovery/Web-Content/raft-small-directories.txt"
+export FILES_LARGE="/home/michel/lists/seclists/Discovery/Web-Content/raft-large-files.txt"
+export FILES_SMALL="/home/michel/lists/seclists/Discovery/Web-Content/raft-small-files.txt"
