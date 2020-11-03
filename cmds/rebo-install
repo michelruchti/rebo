@@ -70,11 +70,9 @@ fi
 
 if [ ! -d ~/.rebo ]
 then
-#     git clone https://github.com/pry0cc/axiom ~/.rebo
-    cp -r . ~/.rebo
+    git clone https://github.com/michelruchti/rebo/ ~/.rebo
 else
-   # cd ~/.rebo && git pull
-   rm -rf ~/.rebo && cp -r . ~/.rebo
+   rm -rf ~/.rebo && git clone https://github.com/michelruchti/rebo/ ~/.rebo
 fi
 
 echo -e "${BBlue}What is your DigitalOcean API key? ${Color_Off}"
